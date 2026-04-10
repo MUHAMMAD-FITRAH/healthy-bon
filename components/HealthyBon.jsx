@@ -181,7 +181,7 @@ SCORING: Buah/Sayur 80-95, Daging segar/Ikan 55-75, Pasta/Roti 45-65, Mie instan
         prompt,
         imgSrc,
         false,
-        { model: "claude-sonnet-4" }
+        { model: "claude-opus-4.6-fast" }
       );
 
       // Ekstrak teks dari berbagai kemungkinan format response Puter
