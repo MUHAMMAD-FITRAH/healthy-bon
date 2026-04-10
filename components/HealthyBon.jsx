@@ -150,22 +150,21 @@ export default function HealthyBon() {
     await delay(600); setStep(1);
 
     try {
-      // Pastikan Puter.js sudah ter-load
       if (typeof window === "undefined" || !window.puter) {
-        throw new Error("Puter.js belum ter-load. Refresh halaman dan coba lagi.");
+        throw new Error("Puter.js belum siap. Refresh halaman (Ctrl+F5) dan coba lagi.");
       }
 
-      const prompt = `Analisis struk belanja Indonesia ini. Ekstrak SEMUA item makanan/minuman.
+      const prompt = `Analisis struk belanja ini. Ekstrak SEMUA item makanan/minuman. Berlaku untuk struk dari Indonesia maupun luar negeri.
 
-BALAS HANYA JSON VALID (tanpa backtick, tanpa markdown, tanpa teks lain):
+BALAS HANYA JSON VALID tanpa backtick, tanpa markdown, tanpa teks lain:
 {
-  "store_name": "nama toko",
+  "store_name": "nama toko/restoran",
   "date": "tanggal",
   "ocr_raw": ["baris teks per item"],
   "items": [{
-    "raw_text": "teks asli",
-    "product_name": "nama lengkap",
-    "category": "Mie Instan/Snack/Minuman Manis/Susu/Buah/Sayur/Daging/Roti/dll",
+    "raw_text": "teks asli di struk",
+    "product_name": "nama produk lengkap",
+    "category": "Makanan Utama/Snack/Minuman/Daging/Roti/Pasta/dll",
     "calories": 0, "sugar_g": 0, "sodium_mg": 0, "fat_g": 0, "fiber_g": 0, "protein_g": 0,
     "health_score": 0
   }],
@@ -174,31 +173,34 @@ BALAS HANYA JSON VALID (tanpa backtick, tanpa markdown, tanpa teks lain):
   "summary": "ringkasan 1 kalimat"
 }
 
-PANDUAN SCORING:
-- Buah/Sayur segar: 80-95
-- Susu/Yogurt: 60-75
-- Daging segar: 55-70
-- Mie instan: 20-35
-- Snack kemasan: 20-35
-- Minuman manis: 15-30`;
+SCORING: Buah/Sayur 80-95, Daging segar/Ikan 55-75, Pasta/Roti 45-65, Mie instan 20-35, Snack kemasan 20-35, Minuman manis 15-30, Gorengan 25-40.`;
 
-      // Panggil Puter.js dengan gambar
-      const puterRes = await window.puter.ai.chat(prompt, imgSrc, false, {
-        model: "claude-sonnet-4",
-      });
+      // Puter.js signature: chat(prompt, imageURL, testMode, options)
+      // imgSrc sudah berupa data URL lengkap ("data:image/jpeg;base64,...")
+      const puterRes = await window.puter.ai.chat(
+        prompt,
+        imgSrc,
+        false,
+        { model: "claude-sonnet-4" }
+      );
 
-      // Ekstrak text response
+      // Ekstrak teks dari berbagai kemungkinan format response Puter
       let text = "";
       if (typeof puterRes === "string") {
         text = puterRes;
       } else if (puterRes?.message?.content) {
-        text = Array.isArray(puterRes.message.content)
-          ? puterRes.message.content.map(c => c.text || "").join("")
-          : puterRes.message.content;
+        const c = puterRes.message.content;
+        text = Array.isArray(c) ? c.map(x => x?.text || x || "").join("") : String(c);
       } else if (puterRes?.text) {
         text = puterRes.text;
-      } else {
-        text = JSON.stringify(puterRes);
+      } else if (puterRes?.toString) {
+        text = puterRes.toString();
+      }
+
+      console.log("Puter response:", text.substring(0, 200));
+
+      if (!text || text.length < 10) {
+        throw new Error("Respons AI kosong. Coba lagi atau refresh halaman.");
       }
 
       // Parse JSON
@@ -213,12 +215,11 @@ PANDUAN SCORING:
       if (!parsed || !parsed.items) {
         parsed = {
           store_name: "-", date: "-", ocr_raw: ["Struk tidak terbaca"], items: [],
-          recommendations: [{ icon: "📸", text: "Coba foto ulang dengan pencahayaan lebih baik", priority: "medium" }],
+          recommendations: [{ icon: "📸", text: "Coba foto lebih jelas", priority: "medium" }],
           overall_score: 0, summary: "Struk tidak dapat dibaca.",
         };
       }
 
-      // Animasi OCR
       setStep(1);
       for (let i = 0; i < (parsed.ocr_raw || []).length; i++) {
         await delay(120);
@@ -235,8 +236,9 @@ PANDUAN SCORING:
       setWeekData(updated);
       setMode("result");
     } catch (err) {
-      console.error("Puter.js error:", err);
-      setError(err?.message || "Analisis gagal. Pastikan koneksi internet stabil dan coba lagi.");
+      console.error("Puter error detail:", err);
+      const msg = err?.error?.message || err?.message || String(err);
+      setError(`Error: ${msg}. Buka Console (F12) untuk detail lengkap.`);
       setMode("preview"); setStep(-1);
     }
   }, [imgSrc, weekData]);
