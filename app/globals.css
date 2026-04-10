@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
+
+@keyframes hb-spin { to { transform: rotate(360deg); } }
+@keyframes hb-fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes hb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes hb-slide { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes hb-scan { 0% { top: 0; } 100% { top: calc(100% - 2px); } }
+
+.animate-hb-spin { animation: hb-spin 0.7s linear infinite; }
+.animate-hb-fade { animation: hb-fade 0.5s ease; }
+.animate-hb-pulse { animation: hb-pulse 1.2s infinite; }
+.animate-hb-slide { animation: hb-slide 0.3s ease; }
+.animate-hb-scan { animation: hb-scan 2s ease-in-out infinite alternate; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { @apply bg-gray-300 dark:bg-gray-700 rounded; }
+
+/* Score colors */
+.score-good { @apply text-health-green; }
+.score-warn { @apply text-health-amber; }
+.score-danger { @apply text-health-red; }
