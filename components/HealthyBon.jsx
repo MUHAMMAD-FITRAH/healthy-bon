@@ -150,21 +150,75 @@ export default function HealthyBon() {
     await delay(600); setStep(1);
 
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: b64, mediaType: mt }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok || json.error) {
-        throw new Error(json.error || "Analisis gagal");
+      // Pastikan Puter.js sudah ter-load
+      if (typeof window === "undefined" || !window.puter) {
+        throw new Error("Puter.js belum ter-load. Refresh halaman dan coba lagi.");
       }
 
-      const parsed = json.data;
+      const prompt = `Analisis struk belanja Indonesia ini. Ekstrak SEMUA item makanan/minuman.
 
-      // Animate OCR
+BALAS HANYA JSON VALID (tanpa backtick, tanpa markdown, tanpa teks lain):
+{
+  "store_name": "nama toko",
+  "date": "tanggal",
+  "ocr_raw": ["baris teks per item"],
+  "items": [{
+    "raw_text": "teks asli",
+    "product_name": "nama lengkap",
+    "category": "Mie Instan/Snack/Minuman Manis/Susu/Buah/Sayur/Daging/Roti/dll",
+    "calories": 0, "sugar_g": 0, "sodium_mg": 0, "fat_g": 0, "fiber_g": 0, "protein_g": 0,
+    "health_score": 0
+  }],
+  "recommendations": [{"icon": "emoji", "text": "saran spesifik", "priority": "high/medium/good"}],
+  "overall_score": 0,
+  "summary": "ringkasan 1 kalimat"
+}
+
+PANDUAN SCORING:
+- Buah/Sayur segar: 80-95
+- Susu/Yogurt: 60-75
+- Daging segar: 55-70
+- Mie instan: 20-35
+- Snack kemasan: 20-35
+- Minuman manis: 15-30`;
+
+      // Panggil Puter.js dengan gambar
+      const puterRes = await window.puter.ai.chat(prompt, imgSrc, false, {
+        model: "claude-sonnet-4",
+      });
+
+      // Ekstrak text response
+      let text = "";
+      if (typeof puterRes === "string") {
+        text = puterRes;
+      } else if (puterRes?.message?.content) {
+        text = Array.isArray(puterRes.message.content)
+          ? puterRes.message.content.map(c => c.text || "").join("")
+          : puterRes.message.content;
+      } else if (puterRes?.text) {
+        text = puterRes.text;
+      } else {
+        text = JSON.stringify(puterRes);
+      }
+
+      // Parse JSON
+      let parsed;
+      try {
+        parsed = JSON.parse(text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim());
+      } catch {
+        const m = text.match(/\{[\s\S]*\}/);
+        if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
+      }
+
+      if (!parsed || !parsed.items) {
+        parsed = {
+          store_name: "-", date: "-", ocr_raw: ["Struk tidak terbaca"], items: [],
+          recommendations: [{ icon: "📸", text: "Coba foto ulang dengan pencahayaan lebih baik", priority: "medium" }],
+          overall_score: 0, summary: "Struk tidak dapat dibaca.",
+        };
+      }
+
+      // Animasi OCR
       setStep(1);
       for (let i = 0; i < (parsed.ocr_raw || []).length; i++) {
         await delay(120);
@@ -181,7 +235,8 @@ export default function HealthyBon() {
       setWeekData(updated);
       setMode("result");
     } catch (err) {
-      setError(err.message || "Koneksi gagal. Coba lagi.");
+      console.error("Puter.js error:", err);
+      setError(err?.message || "Analisis gagal. Pastikan koneksi internet stabil dan coba lagi.");
       setMode("preview"); setStep(-1);
     }
   }, [imgSrc, weekData]);
