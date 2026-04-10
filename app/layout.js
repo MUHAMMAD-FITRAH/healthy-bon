@@ -27,6 +27,9 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="id" suppressHydrationWarning>
+      <head>
+        <script src="https://js.puter.com/v2/"></script>
+      </head>
       <body className="font-sans bg-forest-50 dark:bg-forest-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
         {children}
       </body>
